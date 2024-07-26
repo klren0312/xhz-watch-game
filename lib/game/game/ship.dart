@@ -6,7 +6,6 @@ import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame_bloc/flame_bloc.dart';
 import 'package:flutter/animation.dart';
-import 'package:watchsteroids/app/app.dart';
 import 'package:watchsteroids/game/game.dart';
 
 class ShipContainer extends PositionComponent
@@ -21,33 +20,19 @@ class ShipContainer extends PositionComponent
         );
 
   final GameCubit gameCubit;
-
   late final side = 40.0;
-
-
-  late final path = Path()
-    ..moveTo(side / 2, 0)
-    ..lineTo(side, side)
-    ..lineTo(side / 2, side * 0.7)
-    ..lineTo(0, side)
-    ..close();
   late final xhz = XhzSprite();
   @override
   Future<void> onLoad() async {
-    // await add(shadow2);
-    // await add(shadow);
-    // await add(ship);
-
     await add(xhz);
     await xhz.add(ShipGlow());
     await xhz.add(Cannon());
-
-
     await xhz.add(
       CameraSpot(gameCubit)..position = Vector2(side / 2, side / 2 - 50),
     );
   }
 
+  /// 开启新游戏
   @override
   void onNewState(RotationState state) {
     final from = xhz.angle;
@@ -59,6 +44,7 @@ class ShipContainer extends PositionComponent
     xhz.go(to: state.shipAngle);
   }
 
+  /// 碰撞到急游戏结束
   void hitAsteroid(Set<Vector2> intersectionPoints) {
     gameCubit.gameOver();
     gameRef.flameMultiBlocProvider.add(
@@ -69,7 +55,10 @@ class ShipContainer extends PositionComponent
 }
 
 class XhzSprite extends SpriteComponent
-  with HasGameRef<WatchsteroidsGame>, ParentIsA<ShipContainer> {
+  with
+      HasGameRef<WatchsteroidsGame>,
+      ParentIsA<ShipContainer>,
+      CollisionCallbacks {
   XhzSprite({super.position}): super(anchor: Anchor.center);
 
   @override
@@ -111,6 +100,18 @@ class XhzSprite extends SpriteComponent
       ..onComplete = () {
         canShoot = true;
       };
+  }
+
+  @override
+  void onCollisionStart(
+      Set<Vector2> intersectionPoints,
+      PositionComponent other,
+      ) {
+    super.onCollisionStart(intersectionPoints, other);
+
+    if (other is AsteroidSprite) {
+      parent.hitAsteroid(intersectionPoints);
+    }
   }
 }
 
@@ -179,6 +180,7 @@ class ShipGlow extends SpriteComponent
   }
 }
 
+/// 相机跟随
 class CameraSpot extends PositionComponent with HasGameRef<WatchsteroidsGame> {
   CameraSpot(this.gameCubit)
       : super(
